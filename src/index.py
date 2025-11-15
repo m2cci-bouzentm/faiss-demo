@@ -17,7 +17,7 @@ for record in data:
     try:
         marks.append(record["Mark"])
     except:
-        print(record.keys())
         print(record["ApplicationNumber"], record["ApplicationDate"])
+        pass
 
 indexBuilder.build_index_from_texts(marks)
