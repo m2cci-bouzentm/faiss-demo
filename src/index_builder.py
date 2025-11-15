@@ -1,5 +1,6 @@
 from typing import List
 import os
+import time
 import google.generativeai as genai
 from dotenv import load_dotenv
 from tqdm import tqdm
@@ -37,7 +38,7 @@ class IndexBuilder:
         total_batches = (total_texts + batch_size - 1) // batch_size
         
         with tqdm(total=total_batches, desc="Generating embeddings", unit="batch") as pbar:
-            for i in range(0, total_texts, batch_size):
+            for batch_num, i in enumerate(range(0, total_texts, batch_size), 1):
                 batch_texts = texts[i:i + batch_size]
                 
                 result = genai.embed_content(
@@ -58,5 +59,10 @@ class IndexBuilder:
                 
                 pbar.update(1)
                 pbar.set_postfix({"embeddings": len(embeddings), "texts": min(i + batch_size, total_texts)})
+                
+                # Avoid rate limiting by sleep 1 minute after every 50 requests
+                if batch_num % 50 == 0 and batch_num < total_batches:
+                    pbar.write(f"⏸️  Rate limit: Sleeping 60s after {batch_num} requests...")
+                    time.sleep(60)
         
         return embeddings
