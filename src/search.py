@@ -47,5 +47,5 @@ distances = distances[0]
 
 for i, faiss_position in enumerate(indices):
     name = mapping[str(faiss_position)]
-    distance = distances[i-1]
+    distance = distances[i]
     print(f"    {i} {name} (FAISS position: {faiss_position}, distance: {distance})")
