@@ -1,3 +1,4 @@
 faiss-cpu
 google-generativeai
 python-dotenv
+tqdm
