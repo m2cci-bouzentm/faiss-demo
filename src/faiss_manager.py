@@ -1,14 +1,25 @@
 from typing import List, Dict, Tuple, Optional
+import os
 import faiss
 import numpy as np
+import google.generativeai as genai
+from dotenv import load_dotenv
 from src.storage_provider import StorageProvider
+
+load_dotenv()
 
 
 class FaissManager:
+    _model_name: str = "models/gemini-embedding-001"
+    
     def __init__(self, storage_provider: StorageProvider):
         self.storage_provider: StorageProvider = storage_provider
         self.index: Optional[faiss.IndexFlatL2] = None
         self.mapping: Dict[int, str] = {}
+        
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if api_key:
+            genai.configure(api_key=api_key)
         
     def create_l2_index(self, dimension: int) -> None:
         self.index = faiss.IndexFlatL2(dimension)
@@ -44,17 +55,24 @@ class FaissManager:
             raise FileNotFoundError("Mapping not found")
         
         index_data = self.storage_provider.load_index()
-        self.index = faiss.deserialize_index(index_data)
+        index_array = np.frombuffer(index_data, dtype=np.uint8)
+        self.index = faiss.deserialize_index(index_array)
         self.mapping = self.storage_provider.load_mapping()
     
-    def search(self, query_embedding: List[float], k: int = 5) -> List[Tuple[str, float]]:
+    def search(self, query: str, k: int = 5) -> List[Tuple[str, float]]:
         if self.index is None:
             raise ValueError("Index not created. Call create_l2_index() first.")
         
         if self.index.ntotal == 0:
             raise ValueError("Index is empty. Add vectors first.")
         
-        query_np = np.array([query_embedding], dtype='float32')
+        query_result = genai.embed_content(
+            model=FaissManager._model_name,
+            content=query,
+            task_type="retrieval_query"
+        )
+        
+        query_np = np.array([query_result['embedding']], dtype='float32')
         distances, indices = self.index.search(query_np, k)
         
         indices = indices[0]
