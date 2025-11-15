@@ -4,7 +4,7 @@ import time
 import google.generativeai as genai
 from dotenv import load_dotenv
 from tqdm import tqdm
-from faiss_manager import FaissManager
+from src.faiss_manager import FaissManager
 load_dotenv()
 
 

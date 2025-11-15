@@ -1,7 +1,7 @@
 from typing import List, Dict, Tuple, Optional
 import faiss
 import numpy as np
-from storage_provider import StorageProvider
+from src.storage_provider import StorageProvider
 
 
 class FaissManager:
