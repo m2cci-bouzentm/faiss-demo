@@ -2,3 +2,7 @@ faiss-cpu
 google-generativeai
 python-dotenv
 tqdm
+transformers
+torch
+pillow
+requests
