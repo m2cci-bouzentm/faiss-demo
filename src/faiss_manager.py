@@ -86,3 +86,25 @@ class FaissManager:
                 results.append((mapped_text, distance))
         
         return results
+    
+    def search_by_embedding(self, embedding: np.ndarray, k: int = 5) -> List[Tuple[str, float]]:
+        if self.index is None:
+            raise ValueError("Index not created. Call create_l2_index() first.")
+        
+        if self.index.ntotal == 0:
+            raise ValueError("Index is empty. Add vectors first.")
+        
+        query_np = np.array([embedding], dtype='float32')
+        distances, indices = self.index.search(query_np, k)
+        
+        indices = indices[0]
+        distances = distances[0]
+        
+        results: List[Tuple[str, float]] = []
+        for i, faiss_id in enumerate(indices):
+            if faiss_id in self.mapping:
+                mapped_text = self.mapping[faiss_id]
+                distance = float(distances[i])
+                results.append((mapped_text, distance))
+        
+        return results
