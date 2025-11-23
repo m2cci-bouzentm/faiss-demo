@@ -14,3 +14,4 @@ requests
 epitran
 scikit-learn
 rapidfuzz
+sentence-transformers
