@@ -2,9 +2,15 @@ faiss-cpu
 google-generativeai
 python-dotenv
 tqdm
-epitran
+phonemizer
+numpy
 python-Levenshtein
+panphon
+lingua-language-detector
 transformers
 torch
 pillow
 requests
+epitran
+scikit-learn
+rapidfuzz

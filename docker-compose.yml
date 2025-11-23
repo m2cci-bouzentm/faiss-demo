@@ -1,0 +1,7 @@
+services:
+  matcher:
+    build: .
+    container_name: brand_matcher
+    volumes:
+      - .:/app
+    tty: true

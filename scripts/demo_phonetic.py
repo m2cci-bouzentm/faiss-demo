@@ -1,77 +1,86 @@
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.faiss_manager import FaissManager
 from src.storage_provider import FileSystemStorageProvider
-from src.phonetic_matcher import PhoneticMatcher
+from src.phonetic_matcher import PhoneticFaissEngine
 
-USE_SEMANTIC_SEARCH_RESULT = False
+# Configuration
+JSON_FILE = "data/marques-francaises.json"
+INDEX_PATH = "data/marques_index.faiss"
+MAPPING_PATH = "data/marques_mapping.json"
 
-index_path = "data/marques_index.faiss"
-mapping_path = "data/marques_mapping.json"
+storage = FileSystemStorageProvider(INDEX_PATH, MAPPING_PATH)
 
-storage = FileSystemStorageProvider(index_path, mapping_path)
-faiss_manager = FaissManager(storage_provider=storage)
-faiss_manager.load()
-
-phonetic_matcher = PhoneticMatcher()
-
-test_queries = [
-    "Selego",
-    "Crédit",
-    "Larodj",
+TEST_QUERIES = [
+    "Collectif",
+    "Beeldi",
+    "Subway",
+    "Tech Solutions", 
+    "Pharmacie",
+    "Axa"
 ]
 
-if USE_SEMANTIC_SEARCH_RESULT:
-    print("Mode: Using semantic search results (top 300)")
-    print("=" * 60)
-    print()
+def run_demo():
+    print(f"--- 1. Loading Data from {JSON_FILE} ---")
+    start_time = time.time()
     
-    for query in test_queries:
-        print(f"Query: {query}")
-        query_phonetic = phonetic_matcher.to_phonetic(query)
-        print(f"Query phonetic: {query_phonetic}")
-        print()
-        
-        semantic_results = faiss_manager.search(query, k=300)
-        candidate_texts = [text for text, _ in semantic_results]
-        
-        phonetic_results = phonetic_matcher.rank_by_phonetic_similarity(query, candidate_texts)
-        
-        print(f"Top 10 phonetic matches (from 300 semantic candidates):")
-        for i, (text, distance) in enumerate(phonetic_results[:10], 1):
-            text_phonetic = phonetic_matcher.to_phonetic(text)
-            print(f"  {i}. {text}")
-            print(f"     → {text_phonetic} (Levenshtein: {distance})")
-        print()
-        print("-" * 60)
-        print()
+    try:
+        data = storage.load_data(JSON_FILE)
+    except FileNotFoundError:
+        print(f"Error: Could not find file {JSON_FILE}")
+        return
 
-else:
-    print("Mode: Full scan on all brands")
-    print("=" * 60)
-    print()
+    all_brands = []
+    missing_key_count = 0
     
-    all_brands = list(faiss_manager.mapping.values())
-    print(f"Total brands in database: {len(all_brands)}")
-    print()
+    for record in data:
+        if "Mark" in record and record["Mark"]:
+            all_brands.append(record["Mark"])
+        else:
+            missing_key_count += 1
     
-    for query in test_queries:
-        print(f"Query: {query}")
-        query_phonetic = phonetic_matcher.to_phonetic(query)
-        print(f"Query phonetic: {query_phonetic}")
-        print()
-        
-        phonetic_results = phonetic_matcher.rank_by_phonetic_similarity(query, all_brands)
-        
-        print(f"Top 10 phonetic matches (full scan):")
-        for i, (text, distance) in enumerate(phonetic_results[:10], 1):
-            text_phonetic = phonetic_matcher.to_phonetic(text)
-            print(f"  {i}. {text}")
-            print(f"     → {text_phonetic} (Levenshtein: {distance})")
-        print()
-        print("-" * 60)
-        print()
+    unique_brands = sorted(list(set(all_brands)))
+    
+    print(f"Loaded {len(data)} records.")
+    print(f"Skipped {missing_key_count} records (missing 'Mark').")
+    print(f"Final unique brands: {len(unique_brands)}")
+    
+    if len(unique_brands) == 0:
+        print("CRITICAL: No brands loaded. Check your JSON key ('Mark').")
+        return
 
+    print(f"Data loading took {time.time() - start_time:.2f}s")
+    print()
+
+    print("--- 2. Initializing Phonetic Engine (Phonemization + TF-IDF + SVD) ---")
+    print("This may take a minute for 50k brands...")
+    start_time = time.time()
+    
+    engine = PhoneticFaissEngine(unique_brands)
+    
+    print(f"Engine training complete in {time.time() - start_time:.2f}s")
+    print("=" * 60)
+
+
+    print("--- 3. Running Queries ---")
+    for query in TEST_QUERIES:
+        s_time = time.time()
+        
+        results, detected_lang = engine.search(query, k=10)
+        
+        dur = (time.time() - s_time) * 1000
+        
+        print(f"Query: '{query}' (Detected: {detected_lang})")
+        print(f"Found matches in {dur:.2f}ms:")
+        
+        for i, (text, score) in enumerate(results, 1):
+            quality = "✅" if score > 0.85 else "⚠️" if score > 0.8 else "❌"
+            print(f"   {i}. {quality} {text:<30} (Score: {score:.4f})")
+        
+        print("-" * 60)
+
+if __name__ == "__main__":
+    run_demo()
