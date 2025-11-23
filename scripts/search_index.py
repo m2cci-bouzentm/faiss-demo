@@ -31,7 +31,6 @@ test_queries = [
 
 for query in test_queries:
     results = faiss_manager.search(query, k=3)
-    
     print(f"Query: {query}")
     print(f"Found {len(results)} matches:")
     for text, distance in results:
